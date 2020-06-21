@@ -4,8 +4,9 @@ using LinearAlgebra: dot
 using SemialgebraicSets
 using JuMP
 
+# Pirates an AlgebraicSet from SemialgebraicSets as a workaround
+# for a design problem.
 import SemialgebraicSets.inequalities
-
 function SemialgebraicSets.inequalities(::AlgebraicSet)
 	[]
 end
@@ -17,6 +18,9 @@ struct MomentSequenceConstraint <: AbstractConstraint
 end
 
 function expect(m::AbstractMeasure, p::AbstractPolynomialLike)
+	# Comptes ∫p dμ = ∑(c * μ[i]),
+	# for a given p = ∑(c * x^i).
+
 	vars_p = variables(p)
 	vars_m = variables(m)
 	vars_d = setdiff(vars_p, vars_m)
@@ -29,6 +33,13 @@ JuMP.build_constraint(::Function, m::AbstractMeasure, ::MomentSequence; domain) 
 	MomentSequenceConstraint(m, domain)
 
 function JuMP.add_constraint(model::Model, c::MomentSequenceConstraint, ::String = "")
+	# Builds Lasserre-style moment constraint of order 't'.
+	# Mt(μ) >= 0; Mt-g(gμ) >= 0 (∀g); Mt-h(hμ) == 0 (∀h)
+
+	# Lasserre, Jean-Bernard. (2004). Global Optimization With Polynomials
+	# And The Problem Of Moments. SIAM Journal on Optimization.
+	# 11. 10.1137/S1052623400366802.
+
 	function moment_matrix(m::AbstractMeasure, t::Integer)
 		ys = reverse(monomials(variables(m), 0:t ÷ 2))
 		(x->expect(m, x)).(ys * ys')
