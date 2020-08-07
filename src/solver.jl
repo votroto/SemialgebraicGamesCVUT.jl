@@ -1,54 +1,64 @@
-using SumOfSquares: SOSModel
+using SumOfSquares
 using MultivariateMoments
 using MultivariatePolynomials
+using PolyJuMP
 
-function min_order(p::AbstractPolynomial, Sy::AbstractSemialgebraicSet)
-	# Finds the initial order of the Lasserre moment hierarchy; i.e what
-	# moments are required to compute the expectations of p and Sy.
+"""
+Finds the initial order of the hierarchy; i.e what degrees are required
+to compute: Eμ[p]; M[gμ] ∀g ∈ Sy; and positivstellensatz of Eμ[p] on Sx.
+"""
+function min_order(
+        p::AbstractPolynomial,
+        Sx::AbstractSemialgebraicSet,
+        Sy::AbstractSemialgebraicSet,
+)
+        round_up_even(i::Integer) = (i + 1) & ~(1)
+        deg(s::AbstractBasicSemialgebraicSet) = maxdegree.(inequalities(s))
+        deg(s::AbstractAlgebraicSet) = maxdegree.(equalities(s))
+        deg(p::AbstractPolynomial) = maxdegree(p)
 
-	round_up_even(i::Integer) = (i + 1) & ~(1)
-	defs(s::AbstractBasicSemialgebraicSet) = inequalities(s)
-	defs(s::AbstractAlgebraicSet) = equalities(s)
+        y = variables(Sy)
+        x = variables(Sx)
+        px = subs(p, y => ones(length(y)))
+        py = subs(p, x => ones(length(x)))
 
-	round_up_even(maximum([maxdegree.(p, variables(Sy)); maxdegree.(defs(Sy))]))
+        round_up_even(maximum([deg(px) deg(py) deg(Sy) deg(Sx)]))
 end
 
-function solve_game(p::AbstractPolynomial, Sx::AbstractSemialgebraicSet,
-	Sy::AbstractSemialgebraicSet, optimizer; iteration::Integer = 0)
-	# Tries to solve a zero-sum two-player polynomial game on semialgebraic
-	# sets, using an iteration of the Lasserre moment hierarchy.
+"""
+Tries to solve a zero-sum two-player polynomial game on semialgebraic sets,
+using an iteration of the moment--sos hierarchy.
 
-	# Returns the payoff and the optimal strategy of player X; given a
-	# payoff function p, and semialgebraic strategy sets Sx and Sy.
+The inputs are: a payoff function p, semialgebraic strategy sets Sx and Sy, and
+an "iteration", where "minimal order + 2*iteration" defines the actual order.
 
-	# Lasserre, Jean-Bernard. (2004). Global Optimization With Polynomials
-	# And The Problem Of Moments. SIAM Journal on Optimization.
-	# 11. 10.1137/S1052623400366802.
-	# P. A. Parrilo (2006). Polynomial games and sum of squares optimization
-	# In Proceedings of the 45th IEEE Conference on Decision and Control
-	# (pp. 2855-2860).
+Returns: the payoff and the optimal strategies of both players.
 
+Lasserre, Jean-Bernard. (2004). Global Optimization With Polynomials And The
+Problem Of Moments. SIAM Journal on Optimization. 11. 10.1137/S1052623400366802.
+P. A. Parrilo (2006). Polynomial games and sum of squares optimization In
+Proceedings of the 45th IEEE Conference on Decision and Control (pp. 2855-2860).
+"""
+function solve_game(
+        p::AbstractPolynomial,
+        Sx::AbstractSemialgebraicSet,
+        Sy::AbstractSemialgebraicSet,
+        optimizer_factory;
+        iteration::Unsigned = 0x0,
+)
+        order = min_order(p, Sx, Sy) + iteration * 2
 
-	@assert iteration >= 0
+        m = SOSModel(optimizer_factory)
 
-	order = min_order(p, Sy) + iteration * 2
-	monoms = reverse(monomials(variables(Sy), 0:order))
+        @variable m α
+        @objective m Min α
+        @variable m μ Moments(order, Sy)
+        @constraint(m, q, linearize(μ, p) <= α, domain = Sx, maxdegree = order)
 
-	m = SOSModel(optimizer)
-	@variable  m α
-	@variable  m μ[1:length(monoms)]
-	@objective m Min α
+        set_silent(m)
+        optimize!(m)
 
-	μs = measure(μ, monoms)
-
-	@constraint(m, α - expect(μs, p) >= 0, domain = Sx)
-	@constraint(m, μs in MomentSequence(), domain = Sy)
-	@constraint(m, μ[1] == 1)
-
-	set_silent(m)
-	optimize!(m)
-
-	mea = measure(value.(μ), monoms)
-	mm = moment_matrix(mea, monomials(variables(Sy), 0:order ÷ 2))
-	value(α), isnan(value(α)) ? nothing : extractatoms(mm, 1e-4)
+        xmat = moment_matrix(q)
+        ymat = moment_matrix(μ)
+        value(α), extractatoms(xmat, 1e-4), extractatoms(ymat, 1e-4)
 end

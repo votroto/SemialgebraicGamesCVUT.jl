@@ -20,7 +20,8 @@ using SemialgebraicGames
 using DynamicPolynomials
 using SemialgebraicSets
 # Example semidefinite optimizer.
-using SCS
+using CSDP
+opt = CSDP.Optimizer
 
 # Example game definition
 @polyvar x y
@@ -29,8 +30,7 @@ Sx = @set 1 - x^2 >= 0
 Sy = @set 1 - y^2 >= 0
 
 # Run the solver. (First time load. Again.)
-value_x, measure_x = solve_game( p, Sx, Sy, SCS.Optimizer)
-value_y, measure_y = solve_game(-p, Sy, Sx, SCS.Optimizer, iteration=1)
+value_x, measure_x, measure_y = solve_game(p, Sx, Sy, opt, iteration=0x1)
 ```
 
 ## To remove:
