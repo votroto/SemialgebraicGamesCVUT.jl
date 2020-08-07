@@ -3,7 +3,13 @@ using DynamicPolynomials
 using SemialgebraicSets
 using JuMP
 
-import MultivariateMoments.moment_matrix
+
+# Pirates an AlgebraicSet as a workaround for a design problem.
+import SemialgebraicSets.inequalities
+function SemialgebraicSets.inequalities(::AlgebraicSet)
+	[]
+end
+
 
 struct Moments
         maxdegree::Integer
@@ -19,6 +25,7 @@ function JuMP.build_variable(_error, info, s::Moments; extra_kw_args...)
         return s
 end
 
+import MultivariateMoments.moment_matrix
 function moment_matrix(m::MomentsVar)
 	ys = reverse(monomials(m.pvars, 0:m.maxdegree÷2))
 	MomentMatrix(value.(linearize.(m, ys * ys')), ys)

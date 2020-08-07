@@ -22,7 +22,7 @@ function min_order(
         px = subs(p, y => ones(length(y)))
         py = subs(p, x => ones(length(x)))
 
-        round_up_even(maximum([deg(px) deg(py) deg(Sy) deg(Sx)]))
+        round_up_even(maximum([deg(px); deg(py); deg(Sy); deg(Sx)]))
 end
 
 """
