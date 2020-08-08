@@ -77,3 +77,23 @@ function linearize(m::MomentsVar, mono::Monomial)
 end
 
 Base.broadcastable(x::MomentsVar) = Ref(x)
+
+
+using LinearAlgebra
+struct dd end
+struct ddConstraint <: AbstractConstraint
+	mat::AbstractArray
+end
+
+JuMP.build_constraint(::Function, m::AbstractArray, ::dd) =
+	ddConstraint(m)
+
+function JuMP.add_constraint(model::Model, c::ddConstraint, ::String = "")
+	# Weak column diagonal dominance with nonnegative diagonal entries.
+	X = c.mat
+	W = X - Diagonal(X)
+	Z = @variable(model, [1:size(X, 1), 1:size(X, 1)], Symmetric)
+	@constraint(model, W .>= -Z)
+	@constraint(model, W .<=  Z)
+	@constraint(model, diag(X) .>= sum(Z, dims=2))
+end

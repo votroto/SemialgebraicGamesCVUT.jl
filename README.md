@@ -32,6 +32,10 @@ Sy = @set 1 - y^2 >= 0
 # Run the solver. (First time load. Again.)
 value_x, measure_x, measure_y = solve_game(p, Sx, Sy, opt, iteration=0x1)
 ```
+It is also possible to use LP and SOCP solvers by imbueing them with diagonal-dominance bridges.
+```julia
+opt = lazy_relax(ECOS.Optimizer, SDDPBridge)
+```
 
 ## To remove:
 Open your _Julia_ interpreter, press `]` to enter the _pkg_-mode, and run

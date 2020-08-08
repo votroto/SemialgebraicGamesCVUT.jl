@@ -3,7 +3,10 @@ Converts a Semidefinite Program (SDP) into a Scaled=Diagonally-Dominant Program
 (SDDP). Positive-semidefiniteness constraints are relaxed into Scaled-diagonal-
 dominance constraints.
 """
-struct SDDPBridge{T,F,G} <: MOIB.Constraint.AbstractBridge end
+struct SDDPBridge{T,F,G} <: MOIB.Constraint.AbstractBridge
+        side_dimension
+        constraint
+end
 
 function MOIB.Constraint.bridge_constraint(
         ::Type{SDDPBridge{T,F,G}},
@@ -25,16 +28,17 @@ function MOIB.Constraint.bridge_constraint(
                 l = MOI.add_constraint(model, g, MOI.RotatedSecondOrderCone(3))
         end
 
-	# Handle accidental PSD constraints on a single variable
-
+        # Handle accidental PSD constraints on a single variable
+        e = undef
         if n == 1
-                MOI.add_constraint(model, matrix[1], MOI.GreaterThan(zero(T)))
+                g = matrix[1]
+                e = MOI.add_constraint(model, g, MOI.GreaterThan(zero(T)))
         else
                 g = MOIU.operate(vcat, T, matrix...)
-                MOI.add_constraint(model, g, MOI.Zeros(n * n))
+                e = MOI.add_constraint(model, g, MOI.Zeros(n * n))
         end
 
-        return SDDPBridge{T,F,G}()
+        return SDDPBridge{T,F,G}(n, e)
 end
 
 function MOI.supports_constraint(
@@ -63,4 +67,11 @@ function MOIB.Constraint.concrete_bridge_type(
         S = MOIU.scalar_type(G)
         F = MOIU.promote_operation(-, T, S, MOI.SingleVariable)
         return SDDPBridge{T,F,G}
+end
+
+function MOI.get(ml::MOI.ModelLike, cd::MOI.ConstraintDual, bridge::SDDPBridge)
+        dual = MOI.get(ml, cd, bridge.constraint)
+        side = bridge.side_dimension
+        mat = reshape(dual, side, side)
+        [(i == j) ? mat[i, j] : mat[i, j] / 2 for j in 1:side for i in 1:j]
 end

@@ -40,6 +40,7 @@ end
 	p  = 2 * x * y^2 - x^2 - y
 	Sx = @set 1 - x^2 >= 0
 	Sy = @set 1 - y^2 >= 0
+	opt = CSDP.Optimizer
 
 	expected_measure_x = AtomicMeasure(variables(Sx), [
 		WeightedDiracMeasure([0.3968], 1)])
@@ -60,6 +61,7 @@ end
 	p  = 5x * y - 2x^2 - 2x * y^2 - y
 	Sx = @set 1 - x^2 >= 0
 	Sy = @set 1 - y^2 >= 0
+	opt = CSDP.Optimizer
 
 	expected_measure_x = AtomicMeasure(variables(Sx), [
 		WeightedDiracMeasure([0.2], 1)])
