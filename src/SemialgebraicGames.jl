@@ -1,11 +1,16 @@
 module SemialgebraicGames
 
+include("solver/moment_constraints.jl");
+include("solver/solver.jl");
+
 export solve_game
 
-include("moment_constraints.jl");
-include("solver.jl");
+include("utils/square_a_triangle.jl")
+include("utils/cholesky_like.jl")
+
+include("bridges/bridges.jl")
+include("iterative/iterative.jl")
 
 export DDPBridge, SDDPBridge, lazy_relax
 
-include("bridges/bridges.jl")
 end

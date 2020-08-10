@@ -3,13 +3,13 @@ using DynamicPolynomials
 using SemialgebraicSets
 using JuMP
 
+import MultivariateMoments.moment_matrix
+import SemialgebraicSets.inequalities
 
 # Pirates an AlgebraicSet as a workaround for a design problem.
-import SemialgebraicSets.inequalities
 function SemialgebraicSets.inequalities(::AlgebraicSet)
 	[]
 end
-
 
 struct Moments
         maxdegree::Integer
@@ -25,7 +25,13 @@ function JuMP.build_variable(_error, info, s::Moments; extra_kw_args...)
         return s
 end
 
-import MultivariateMoments.moment_matrix
+"""
+Creates truncated moment matrices M_t(μ), and localizing matrices M_t(gμ),
+where _g_ is a polynomial-like type, _μ_ is a measure, and _t_ is an integer.
+
+Lasserre, Jean-Bernard. (2004). Global Optimization With Polynomials And The
+Problem Of Moments. SIAM Journal on Optimization. 11. 10.1137/S1052623400366802.
+"""
 function moment_matrix(m::MomentsVar)
 	ys = reverse(monomials(m.pvars, 0:m.maxdegree÷2))
 	MomentMatrix(value.(linearize.(m, ys * ys')), ys)
@@ -59,6 +65,10 @@ function JuMP.add_variable(model, s::Moments, name::String)
         return mseq
 end
 
+"""
+Computes the expectation of a polynomial-like type with respect to a truncated
+moment sequence.
+"""
 linearize(m::MomentsVar, t::Term) = coefficient(t) * linearize(m, monomial(t))
 linearize(m::MomentsVar, t::Polynomial) = sum(linearize.(m, terms(t)))
 function linearize(m::MomentsVar, mono::Monomial)
@@ -77,23 +87,3 @@ function linearize(m::MomentsVar, mono::Monomial)
 end
 
 Base.broadcastable(x::MomentsVar) = Ref(x)
-
-
-using LinearAlgebra
-struct dd end
-struct ddConstraint <: AbstractConstraint
-	mat::AbstractArray
-end
-
-JuMP.build_constraint(::Function, m::AbstractArray, ::dd) =
-	ddConstraint(m)
-
-function JuMP.add_constraint(model::Model, c::ddConstraint, ::String = "")
-	# Weak column diagonal dominance with nonnegative diagonal entries.
-	X = c.mat
-	W = X - Diagonal(X)
-	Z = @variable(model, [1:size(X, 1), 1:size(X, 1)], Symmetric)
-	@constraint(model, W .>= -Z)
-	@constraint(model, W .<=  Z)
-	@constraint(model, diag(X) .>= sum(Z, dims=2))
-end

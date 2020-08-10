@@ -32,7 +32,12 @@ Sy = @set 1 - y^2 >= 0
 # Run the solver. (First time load. Again.)
 value_x, measure_x, measure_y = solve_game(p, Sx, Sy, opt, iteration=0x1)
 ```
-It is also possible to use LP and SOCP solvers by imbueing them with diagonal-dominance bridges.
+The problem can also be solved using an iterative change-of-basis technique based on DDP and SDDP.
+```julia
+using ECOS
+opt = CoBModel(ECOS.Optimizer, SDD, iterations=0x5)
+```
+It is also possible to use LP and SOCP solvers simply by imbueing them with diagonal-dominance bridging capabilities.
 ```julia
 opt = lazy_relax(ECOS.Optimizer, SDDPBridge)
 ```
