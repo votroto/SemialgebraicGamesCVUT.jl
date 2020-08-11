@@ -49,3 +49,9 @@ Open your _Julia_ interpreter, press `]` to enter the _pkg_-mode, and run
 rm SemialgebraicGames
 ```
 Finaly, press `backspace` to exit the _pkg_-mode.
+
+## Acknowledgement
+- Ahmadi, A., & Majumdar, A. (2017). Dsos and sdsos optimization: More tractable alternatives to sum of squares and semidefinite optimization. SIAM Journal on Applied Algebra and Geometry, 3. https://doi.org/10.1137/18M118935X
+- Lasserre, J.-B. (2004). Global optimization with polynomials and the problem of moments. SIAM Journal on Optimization, 11. https://doi.org/10.1137/S1052623400366802
+- Parrilo, P. (2007). Polynomial games and sum of squares optimization, 2855–2860. https://doi.org/10.1109/CDC.2006.377261
+
