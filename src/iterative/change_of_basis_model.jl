@@ -1,4 +1,6 @@
 # WIP !!
+const CI = MOI.ConstraintIndex
+const VI = MOI.VariableIndex
 
 MOI.Utilities.@model(
         CoBModel,
@@ -12,15 +14,6 @@ MOI.Utilities.@model(
         (),
         true,
 )
-
-#function MOI.supports_constraint(
-#        ::CoBModel{T},
-#        ::Type{MOI.SingleVariable},
-#        ::Type{<:MOI.Utilities.SUPPORTED_VARIABLE_SCALAR_SETS{T}},
-#) where {T}
-#
-#        return false
-#end
 
 function MOI.supports(
         ::CoBModel{T},
@@ -50,6 +43,11 @@ A change-of-basis iterative model.
 Implements an improvement on DDP and SDDP optimization using the DD and SDD
 families of cones.
 
+`optimizer_constructor` requires optimizer constructors such as ECOS.Optimizer.
+`dd_family`             is either the DD or SDD family of cones.
+`iterations`            specifies the number of changes-of-basis performed.
+`number_type`           sets the numeric type for calculation.
+
 Ahmadi, A., & Majumdar, A. (2017). Dsos and sdsos optimization: More
 tractable alternatives to sum of squares and semidefinite optimization.
 SIAM Journal on Applied Algebra and Geometry, 3. https://doi.org/
@@ -57,14 +55,14 @@ SIAM Journal on Applied Algebra and Geometry, 3. https://doi.org/
 """
 function CoBModel(
         optimizer_constructor,
-        diagonal_dominance_family::Type{<:Union{SDD,DD}};
+        dd_family::Type{<:Union{SDD,DD}};
         iterations::Unsigned = 0,
         number_type::Type = Float64,
 )
         m = CoBModel{number_type}()
-        m.ext[:diagonal_dominance_family] = diagonal_dominance_family
         m.ext[:optimizer_constructor] = optimizer_constructor
         m.ext[:iterations] = iterations
+        m.ext[:dd_family] = dd_family
         return m
 end
 
@@ -74,8 +72,8 @@ function MOI.optimize!(data::CoBModel{T}) where {T}
                 MOI.PositiveSemidefiniteConeTriangle,
         }()
 
-        ci = MOI.get(data, psd_vec)
-        num_psd = length(ci)
+        cio = MOI.get(data, psd_vec)
+        num_psd = length(cio)
         Us = Vector{Matrix{T}}(undef, num_psd)
 
         js = Vector{Matrix{VariableRef}}(undef, num_psd)
@@ -83,25 +81,24 @@ function MOI.optimize!(data::CoBModel{T}) where {T}
                 m = Model()
                 intermediate_map = MOI.copy_to(m, data)
 
-                data.ext[:psd_map] =
-                        Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}()
+                data.ext[:psd_map] = Dict{CI,CI}()
 
                 back = backend(m)
 
-                ci = MOI.get(back, psd_vec)
                 for p in 1:num_psd
-                        fun = MOI.get(back, MOI.ConstraintFunction(), ci[p])
+                        cip = intermediate_map[cio[p]]
+                        fun = MOI.get(back, MOI.ConstraintFunction(), cip)
                         side = MOI.side_dimension(MOI.get(
                                 back,
                                 MOI.ConstraintSet(),
-                                ci[p],
+                                cip,
                         ))
                         U = isassigned(Us, p) ? Us[p] : Array{T}(I, side, side)
                         sqr = square_a_triangle(fun, side)
                         js[p] = JuMP.VariableRef.(m, sqr)
-                        xxx = @constraint(m, js[p] in data.ext[:diagonal_dominance_family](U))
-                        MOI.delete(back, ci[p])
-                        data.ext[:psd_map][ci[p]] = xxx.index
+                        xxx = @constraint(m, js[p] in data.ext[:dd_family](U))
+                        MOI.delete(back, cip)
+                        data.ext[:psd_map][cio[p]] = xxx.index
                 end
                 JuMP.set_optimizer(m, data.ext[:optimizer_constructor])
 
@@ -126,43 +123,29 @@ function MOI.get(model::CoBModel{T}, attr::MOI.ObjectiveValue) where {T}
         MOI.get(model.ext[:inner_optimizer], attr)
 end
 
-function MOI.get(
-        model::CoBModel{T},
-        attr::MOI.VariablePrimal,
-        vi::MOI.VariableIndex,
-) where {T}
-        MOI.get(
-                model.ext[:inner_optimizer],
-                attr,
-                MOIU.map_indices(model.ext[:model_to_optimizer_map], vi),
-        )
+function MOI.get(model::CoBModel{T}, attr::MOI.VariablePrimal, vi::VI) where {T}
+        idx = MOIU.map_indices(model.ext[:model_to_optimizer_map], vi)
+        MOI.get(model.ext[:inner_optimizer], attr, idx)
 end
 
+function MOI.get(model::CoBModel{T}, attr::MOI.ConstraintDual, ci::CI) where {T}
+        idx = MOIU.map_indices(model.ext[:model_to_optimizer_map], ci)
+        MOI.get(model.ext[:inner_optimizer], attr, idx)
+end
+
+# Overload for constraints changed from PSD to DD or SDD.
 function MOI.get(
         model::CoBModel{T},
         attr::MOI.ConstraintDual,
-        vi::MOI.ConstraintIndex,
-) where {T}
-
-        if haskey(model.ext[:psd_map], model.ext[:model_to_optimizer_map][vi])
-                return MOI.get(
-                        model.ext[:inner_optimizer],
-                        attr,
-                        model.ext[:psd_map][model.ext[:model_to_optimizer_map][vi]],
-                )
-        else
-                return MOI.get(
-                        model.ext[:inner_optimizer],
-                        attr,
-                        MOIU.map_indices(
-                                model.ext[:model_to_optimizer_map],
-                                vi,
-                        ),
-                )
-        end
+        ci::CI{F,MOI.PositiveSemidefiniteConeTriangle},
+) where {T,F}
+        idx = model.ext[:psd_map][ci]
+        MOI.get(model.ext[:inner_optimizer], attr, idx)
 end
 
 MOI.supports(::CoBModel, ::MOI.Silent) = true
 function MOI.set(optimizer::CoBModel, ::MOI.Silent, value::Bool)
         optimizer.ext[:silent] = value
 end
+
+Base.show(io::IO, ::CoBModel) = print(io, "An iterative change-of-basis model")

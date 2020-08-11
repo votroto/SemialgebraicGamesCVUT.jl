@@ -1,3 +1,7 @@
+# -----------------------------------------------------------------------------
+# Scaled-Diagonally-dominant bridge [MOI]
+# -----------------------------------------------------------------------------
+
 """
 Converts a Semidefinite Program (SDP) into a Scaled=Diagonally-Dominant Program
 (SDDP). Positive-semidefiniteness constraints are relaxed into Scaled-diagonal-

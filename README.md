@@ -1,6 +1,5 @@
 # SemialgebraicGames.jl
-Solver for two-player zero-sum polynomial games on semialgebraic sets.
-Contrary to the repository name, this package is called `SemialgebraicGames`.
+`SemialgebraicGames.jl` is a solver for two-player zero-sum polynomial games on semialgebraic sets. It also includes DSOS and SDSOS optimization capabilities, along with an iterative change-of-basis algorithm. Contrary to the repository name, this package is called `SemialgebraicGames.jl`.
 
 > Tip: Julia is "fast" is its own _unique_ way, though you may want to keep a book nearby, just in case...
 ## To add
@@ -35,9 +34,11 @@ value_x, measure_x, measure_y = solve_game(p, Sx, Sy, opt, iteration=0x1)
 The problem can also be solved using an iterative change-of-basis technique based on DDP and SDDP.
 ```julia
 using ECOS
-opt = CoBModel(ECOS.Optimizer, SDD, iterations=0x5)
+opt = () -> CoBModel(ECOS.Optimizer, SDD, iterations=0x5)
 ```
-It is also possible to use LP and SOCP solvers simply by imbueing them with diagonal-dominance bridging capabilities.
+> Keep in mind that SDDP and DDP are conservative relaxations. Therefore, `solve_game(p, Sx, Sy, ...)` is unlikely to equal the dual `solve_game(-p, Sy, Sx, ...)`. Try both.
+
+It is also possible to use LP and SOCP solvers simply by imbueing them with diagonal-dominance bridging capabilities. This results in the standard DDP and SDDP optimization.
 ```julia
 opt = lazy_relax(ECOS.Optimizer, SDDPBridge)
 ```

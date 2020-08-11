@@ -1,3 +1,7 @@
+# -----------------------------------------------------------------------------
+# Diagonally-dominant bridge [MOI]
+# -----------------------------------------------------------------------------
+
 """
 Converts a Semidefinite Program (SDP) into a Diagonally-Dominant Program (DDP).
 Positive-semidefiniteness constraints are relaxed into Diagonal-dominance
