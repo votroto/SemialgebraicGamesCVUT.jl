@@ -6,6 +6,7 @@ include("solver/solver.jl");
 export solve_game
 
 include("utils/square_a_triangle.jl")
+include("utils/available_result.jl")
 include("utils/cholesky_like.jl")
 
 include("bridges/bridges.jl")

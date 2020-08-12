@@ -58,6 +58,10 @@ function solve_game(
         set_silent(m)
         optimize!(m)
 
+        if !available_result(m)
+                return JuMP.termination_status(m), nothing, nothing
+        end
+
         xmat = moment_matrix(q)
         ymat = moment_matrix(μ)
         value(α), extractatoms(xmat, 1e-4), extractatoms(ymat, 1e-4)

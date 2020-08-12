@@ -32,7 +32,7 @@ function MOIB.Constraint.bridge_constraint(
                 l = MOI.add_constraint(model, g, MOI.RotatedSecondOrderCone(3))
         end
 
-        # Handle accidental PSD constraints on a single variable
+        # Handle inadvertent PSD constraints on a single variable
         e = undef
         if n == 1
                 g = matrix[1]
