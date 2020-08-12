@@ -12,6 +12,6 @@ include("utils/cholesky_like.jl")
 include("bridges/bridges.jl")
 include("iterative/iterative.jl")
 
-export CoBModel, DDP, SDDP, DDPBridge, SDDPBridge, lazy_relax
+export CoBModel, DD, SDD, DDPBridge, SDDPBridge, lazy_relax
 
 end
